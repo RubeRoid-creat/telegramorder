@@ -178,3 +178,24 @@ class Database:
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
 
+    async def delete_order(self, order_id: int, user_id: int) -> bool:
+        """Удаление заявки и всех связанных отчетов"""
+        async with aiosqlite.connect(self.db_path) as db:
+            # Проверяем, что заявка принадлежит пользователю
+            order = await self.get_order(order_id, user_id)
+            if not order:
+                return False
+            
+            # Удаляем все отчеты по заявке
+            await db.execute("""
+                DELETE FROM reports WHERE order_id = ?
+            """, (order_id,))
+            
+            # Удаляем заявку
+            await db.execute("""
+                DELETE FROM orders WHERE id = ? AND user_id = ?
+            """, (order_id, user_id))
+            
+            await db.commit()
+            return True
+

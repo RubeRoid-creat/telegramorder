@@ -43,12 +43,29 @@ class ReportStates(StatesGroup):
     waiting_what_to_do = State()
 
 
+class DeleteOrderStates(StatesGroup):
+    """Состояния для удаления заявки"""
+    waiting_order_id = State()
+    waiting_confirmation = State()
+
+
 def get_main_keyboard():
     """Главная клавиатура"""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📝 Новая заявка"), KeyboardButton(text="📋 Мои заявки")],
-            [KeyboardButton(text="✅ Завершенные заявки"), KeyboardButton(text="📊 Создать отчет")]
+            [KeyboardButton(text="✅ Завершенные заявки"), KeyboardButton(text="📊 Создать отчет")],
+            [KeyboardButton(text="🗑️ Удалить заявку")]
+        ],
+        resize_keyboard=True
+    )
+
+
+def get_confirmation_keyboard():
+    """Клавиатура подтверждения удаления"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="✅ Да, удалить"), KeyboardButton(text="❌ Отмена")]
         ],
         resize_keyboard=True
     )
@@ -403,6 +420,95 @@ async def process_what_to_do(message: Message, state: FSMContext):
         f"Что нужно сделать: {data.get('what_to_do')}",
         reply_markup=get_main_keyboard()
     )
+
+
+@dp.message(F.text == "🗑️ Удалить заявку")
+@dp.message(Command("delete_order"))
+async def cmd_delete_order(message: Message, state: FSMContext):
+    """Начало процесса удаления заявки"""
+    await state.set_state(DeleteOrderStates.waiting_order_id)
+    await message.answer(
+        "🗑️ Удаление заявки\n\n"
+        "Введите номер заявки для удаления:",
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+
+@dp.message(DeleteOrderStates.waiting_order_id)
+async def process_delete_order_id(message: Message, state: FSMContext):
+    """Обработка номера заявки для удаления"""
+    try:
+        order_id = int(message.text)
+        order = await db.get_order(order_id, message.from_user.id)
+        
+        if not order:
+            await state.clear()
+            await message.answer(
+                "❌ Заявка не найдена. Проверьте номер заявки.",
+                reply_markup=get_main_keyboard()
+            )
+            return
+        
+        await state.update_data(order_id=order_id)
+        await state.set_state(DeleteOrderStates.waiting_confirmation)
+        
+        # Показываем информацию о заявке для подтверждения
+        status_emoji = {
+            "pending": "⏳",
+            "in_progress": "🔧",
+            "long_repair": "⏳",
+            "completed": "✅",
+            "cancelled": "❌",
+            "refused": "🚫"
+        }.get(order["status"], "❓")
+        
+        await message.answer(
+            f"⚠️ Вы уверены, что хотите удалить эту заявку?\n\n"
+            f"{status_emoji} Заявка #{order['id']}\n"
+            f"Адрес: {order['address']}\n"
+            f"Время: {order['time']}\n"
+            f"Техника: {order['equipment_type']}\n"
+            f"Проблема: {order['problem']}\n"
+            f"Статус: {order['status']}\n\n"
+            f"⚠️ Это действие нельзя отменить!",
+            reply_markup=get_confirmation_keyboard()
+        )
+    except ValueError:
+        await message.answer("❌ Введите корректный номер заявки (число).")
+
+
+@dp.message(DeleteOrderStates.waiting_confirmation)
+async def process_delete_confirmation(message: Message, state: FSMContext):
+    """Обработка подтверждения удаления"""
+    if message.text == "✅ Да, удалить":
+        data = await state.get_data()
+        order_id = data["order_id"]
+        
+        deleted = await db.delete_order(order_id, message.from_user.id)
+        
+        await state.clear()
+        
+        if deleted:
+            await message.answer(
+                f"✅ Заявка #{order_id} успешно удалена.",
+                reply_markup=get_main_keyboard()
+            )
+        else:
+            await message.answer(
+                "❌ Ошибка при удалении заявки.",
+                reply_markup=get_main_keyboard()
+            )
+    elif message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "Отмена удаления.",
+            reply_markup=get_main_keyboard()
+        )
+    else:
+        await message.answer(
+            "Пожалуйста, выберите один из вариантов:",
+            reply_markup=get_confirmation_keyboard()
+        )
 
 
 async def main():
