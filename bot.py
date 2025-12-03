@@ -43,7 +43,7 @@ def get_main_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📝 Новая заявка"), KeyboardButton(text="📋 Мои заявки")],
-            [KeyboardButton(text="📊 Создать отчет")]
+            [KeyboardButton(text="✅ Завершенные заявки"), KeyboardButton(text="📊 Создать отчет")]
         ],
         resize_keyboard=True
     )
@@ -70,7 +70,8 @@ async def cmd_start(message: Message):
         "👋 Добро пожаловать в бот управления заявками!\n\n"
         "Вы можете:\n"
         "• Создать новую заявку\n"
-        "• Просмотреть свои заявки\n"
+        "• Просмотреть активные заявки\n"
+        "• Просмотреть завершенные заявки\n"
         "• Создать отчет по заявке",
         reply_markup=get_main_keyboard()
     )
@@ -140,14 +141,14 @@ async def process_problem(message: Message, state: FSMContext):
 @dp.message(F.text == "📋 Мои заявки")
 @dp.message(Command("my_orders"))
 async def cmd_my_orders(message: Message):
-    """Просмотр заявок пользователя"""
-    orders = await db.get_user_orders(message.from_user.id)
+    """Просмотр активных заявок пользователя (исключая завершенные)"""
+    orders = await db.get_user_orders(message.from_user.id, exclude_completed=True)
     
     if not orders:
-        await message.answer("У вас пока нет заявок.", reply_markup=get_main_keyboard())
+        await message.answer("У вас нет активных заявок.", reply_markup=get_main_keyboard())
         return
     
-    text = "📋 Ваши заявки:\n\n"
+    text = "📋 Ваши активные заявки:\n\n"
     for order in orders:
         status_emoji = {
             "pending": "⏳",
@@ -166,6 +167,41 @@ async def cmd_my_orders(message: Message):
             f"Проблема: {order['problem']}\n"
             f"Статус: {order['status']}\n\n"
         )
+    
+    await message.answer(text, reply_markup=get_main_keyboard())
+
+
+@dp.message(F.text == "✅ Завершенные заявки")
+@dp.message(Command("completed_orders"))
+async def cmd_completed_orders(message: Message):
+    """Просмотр завершенных заявок пользователя"""
+    orders = await db.get_completed_orders(message.from_user.id)
+    
+    if not orders:
+        await message.answer("У вас нет завершенных заявок.", reply_markup=get_main_keyboard())
+        return
+    
+    text = "✅ Завершенные заявки:\n\n"
+    for order in orders:
+        # Получаем отчеты для каждой заявки
+        reports = await db.get_order_reports(order["id"])
+        latest_report = reports[0] if reports else None
+        
+        text += (
+            f"✅ Заявка #{order['id']}\n"
+            f"Адрес: {order['address']}\n"
+            f"Время: {order['time']}\n"
+            f"Техника: {order['equipment_type']}\n"
+            f"Проблема: {order['problem']}\n"
+        )
+        
+        if latest_report and latest_report.get("total_amount"):
+            text += (
+                f"Общая сумма: {latest_report['total_amount']} руб.\n"
+                f"Себестоимость: {latest_report.get('cost_price', 0)} руб.\n"
+            )
+        
+        text += "\n"
     
     await message.answer(text, reply_markup=get_main_keyboard())
 
@@ -274,8 +310,14 @@ async def process_cost_price(message: Message, state: FSMContext):
         )
         
         await state.clear()
+        
+        status_text = "✅ Завершен"
+        if data["status"] == "completed":
+            status_text += "\n\n📌 Заявка перемещена в список завершенных заявок"
+        
         await message.answer(
-            f"✅ Отчет создан для заявки #{data['order_id']}\n\n"
+            f"✅ Отчет создан для заявки #{data['order_id']}\n"
+            f"Статус: {status_text}\n\n"
             f"Общая сумма: {data.get('total_amount', 0)} руб.\n"
             f"Себестоимость: {cost_price} руб.",
             reply_markup=get_main_keyboard()

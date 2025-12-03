@@ -68,13 +68,34 @@ class Database:
             await db.commit()
             return cursor.lastrowid
 
-    async def get_user_orders(self, user_id: int) -> List[Dict]:
-        """Получение всех заявок пользователя"""
+    async def get_user_orders(self, user_id: int, exclude_completed: bool = True) -> List[Dict]:
+        """Получение заявок пользователя (по умолчанию исключает завершенные)"""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            if exclude_completed:
+                async with db.execute("""
+                    SELECT * FROM orders 
+                    WHERE user_id = ? AND status != 'completed'
+                    ORDER BY created_at DESC
+                """, (user_id,)) as cursor:
+                    rows = await cursor.fetchall()
+                    return [dict(row) for row in rows]
+            else:
+                async with db.execute("""
+                    SELECT * FROM orders 
+                    WHERE user_id = ? 
+                    ORDER BY created_at DESC
+                """, (user_id,)) as cursor:
+                    rows = await cursor.fetchall()
+                    return [dict(row) for row in rows]
+
+    async def get_completed_orders(self, user_id: int) -> List[Dict]:
+        """Получение только завершенных заявок пользователя"""
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             async with db.execute("""
                 SELECT * FROM orders 
-                WHERE user_id = ? 
+                WHERE user_id = ? AND status = 'completed'
                 ORDER BY created_at DESC
             """, (user_id,)) as cursor:
                 rows = await cursor.fetchall()
