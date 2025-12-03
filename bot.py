@@ -36,6 +36,11 @@ class ReportStates(StatesGroup):
     waiting_status = State()
     waiting_total_amount = State()
     waiting_cost_price = State()
+    # Состояния для длительного ремонта
+    waiting_agreed_amount = State()
+    waiting_completion_date = State()
+    waiting_completion_time = State()
+    waiting_what_to_do = State()
 
 
 def get_main_keyboard():
@@ -165,8 +170,22 @@ async def cmd_my_orders(message: Message):
             f"Время: {order['time']}\n"
             f"Техника: {order['equipment_type']}\n"
             f"Проблема: {order['problem']}\n"
-            f"Статус: {order['status']}\n\n"
+            f"Статус: {order['status']}\n"
         )
+        
+        # Если это длительный ремонт, показываем информацию из отчета
+        if order["status"] == "long_repair":
+            reports = await db.get_order_reports(order["id"])
+            latest_report = reports[0] if reports else None
+            if latest_report:
+                text += (
+                    f"Сумма согласования: {latest_report.get('agreed_amount', 0)} руб.\n"
+                    f"Дата завершения: {latest_report.get('completion_date', 'не указана')}\n"
+                    f"Время завершения: {latest_report.get('completion_time', 'не указано')}\n"
+                    f"Что нужно сделать: {latest_report.get('what_to_do', 'не указано')}\n"
+                )
+        
+        text += "\n"
     
     await message.answer(text, reply_markup=get_main_keyboard())
 
@@ -260,10 +279,18 @@ async def process_report_status(message: Message, state: FSMContext):
     status = status_map[message.text]
     await state.update_data(status=status)
     
-    if status in ["completed", "long_repair"]:
+    if status == "completed":
+        # Для завершенных заявок - общая сумма и себестоимость
         await state.set_state(ReportStates.waiting_total_amount)
         await message.answer(
             "Введите общую сумму (число):",
+            reply_markup=ReplyKeyboardRemove()
+        )
+    elif status == "long_repair":
+        # Для длительного ремонта - сумма согласования
+        await state.set_state(ReportStates.waiting_agreed_amount)
+        await message.answer(
+            "Введите сумму согласования (число):",
             reply_markup=ReplyKeyboardRemove()
         )
     else:
@@ -297,7 +324,7 @@ async def process_total_amount(message: Message, state: FSMContext):
 
 @dp.message(ReportStates.waiting_cost_price)
 async def process_cost_price(message: Message, state: FSMContext):
-    """Обработка себестоимости и сохранение отчета"""
+    """Обработка себестоимости и сохранение отчета для завершенных заявок"""
     try:
         cost_price = float(message.text)
         data = await state.get_data()
@@ -311,19 +338,71 @@ async def process_cost_price(message: Message, state: FSMContext):
         
         await state.clear()
         
-        status_text = "✅ Завершен"
-        if data["status"] == "completed":
-            status_text += "\n\n📌 Заявка перемещена в список завершенных заявок"
-        
         await message.answer(
             f"✅ Отчет создан для заявки #{data['order_id']}\n"
-            f"Статус: {status_text}\n\n"
+            f"Статус: ✅ Завершен\n\n"
+            f"📌 Заявка перемещена в список завершенных заявок\n\n"
             f"Общая сумма: {data.get('total_amount', 0)} руб.\n"
             f"Себестоимость: {cost_price} руб.",
             reply_markup=get_main_keyboard()
         )
     except ValueError:
         await message.answer("❌ Введите корректное число.")
+
+
+@dp.message(ReportStates.waiting_agreed_amount)
+async def process_agreed_amount(message: Message, state: FSMContext):
+    """Обработка суммы согласования для длительного ремонта"""
+    try:
+        agreed_amount = float(message.text)
+        await state.update_data(agreed_amount=agreed_amount)
+        await state.set_state(ReportStates.waiting_completion_date)
+        await message.answer("Введите дату завершения (например: 2024-12-31 или 31.12.2024):")
+    except ValueError:
+        await message.answer("❌ Введите корректное число.")
+
+
+@dp.message(ReportStates.waiting_completion_date)
+async def process_completion_date(message: Message, state: FSMContext):
+    """Обработка даты завершения"""
+    await state.update_data(completion_date=message.text)
+    await state.set_state(ReportStates.waiting_completion_time)
+    await message.answer("Введите время завершения (например: 18:00):")
+
+
+@dp.message(ReportStates.waiting_completion_time)
+async def process_completion_time(message: Message, state: FSMContext):
+    """Обработка времени завершения"""
+    await state.update_data(completion_time=message.text)
+    await state.set_state(ReportStates.waiting_what_to_do)
+    await message.answer("Опишите, что нужно сделать:")
+
+
+@dp.message(ReportStates.waiting_what_to_do)
+async def process_what_to_do(message: Message, state: FSMContext):
+    """Обработка описания работ и сохранение отчета для длительного ремонта"""
+    data = await state.get_data()
+    data["what_to_do"] = message.text
+    
+    await db.create_report(
+        order_id=data["order_id"],
+        status=data["status"],
+        agreed_amount=data.get("agreed_amount"),
+        completion_date=data.get("completion_date"),
+        completion_time=data.get("completion_time"),
+        what_to_do=data.get("what_to_do")
+    )
+    
+    await state.clear()
+    await message.answer(
+        f"✅ Отчет создан для заявки #{data['order_id']}\n"
+        f"Статус: ⏳ Длительный ремонт\n\n"
+        f"Сумма согласования: {data.get('agreed_amount', 0)} руб.\n"
+        f"Дата завершения: {data.get('completion_date')}\n"
+        f"Время завершения: {data.get('completion_time')}\n"
+        f"Что нужно сделать: {data.get('what_to_do')}",
+        reply_markup=get_main_keyboard()
+    )
 
 
 async def main():

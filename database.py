@@ -44,10 +44,35 @@ class Database:
                     status TEXT NOT NULL,
                     total_amount REAL,
                     cost_price REAL,
+                    agreed_amount REAL,
+                    completion_date TEXT,
+                    completion_time TEXT,
+                    what_to_do TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (order_id) REFERENCES orders (id)
                 )
             """)
+            
+            # Добавляем новые поля, если таблица уже существует
+            try:
+                await db.execute("ALTER TABLE reports ADD COLUMN agreed_amount REAL")
+            except aiosqlite.OperationalError:
+                pass  # Поле уже существует
+            
+            try:
+                await db.execute("ALTER TABLE reports ADD COLUMN completion_date TEXT")
+            except aiosqlite.OperationalError:
+                pass
+            
+            try:
+                await db.execute("ALTER TABLE reports ADD COLUMN completion_time TEXT")
+            except aiosqlite.OperationalError:
+                pass
+            
+            try:
+                await db.execute("ALTER TABLE reports ADD COLUMN what_to_do TEXT")
+            except aiosqlite.OperationalError:
+                pass
             
             await db.commit()
 
@@ -117,7 +142,11 @@ class Database:
         order_id: int,
         status: str,
         total_amount: Optional[float] = None,
-        cost_price: Optional[float] = None
+        cost_price: Optional[float] = None,
+        agreed_amount: Optional[float] = None,
+        completion_date: Optional[str] = None,
+        completion_time: Optional[str] = None,
+        what_to_do: Optional[str] = None
     ) -> int:
         """Создание отчета по заявке"""
         async with aiosqlite.connect(self.db_path) as db:
@@ -128,9 +157,11 @@ class Database:
             
             # Создаем отчет
             cursor = await db.execute("""
-                INSERT INTO reports (order_id, status, total_amount, cost_price)
-                VALUES (?, ?, ?, ?)
-            """, (order_id, status, total_amount, cost_price))
+                INSERT INTO reports (order_id, status, total_amount, cost_price, 
+                                   agreed_amount, completion_date, completion_time, what_to_do)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (order_id, status, total_amount, cost_price, 
+                  agreed_amount, completion_date, completion_time, what_to_do))
             
             await db.commit()
             return cursor.lastrowid
