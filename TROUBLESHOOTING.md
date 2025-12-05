@@ -33,6 +33,37 @@ sudo apt-get install python-is-python3
 
 ### 2. Бот не запускается
 
+#### Проблема: ModuleNotFoundError - зависимости не установлены
+
+**Симптомы:**
+```
+ModuleNotFoundError: No module named 'dotenv'
+ModuleNotFoundError: No module named 'aiogram'
+```
+
+**Быстрое решение:**
+
+1. Установите зависимости:
+   ```bash
+   cd ~/telegram-order-bot
+   pip3 install -r requirements.txt
+   ```
+
+2. Если `pip3` не найден, установите pip:
+   ```bash
+   sudo apt-get update
+   sudo apt-get install python3-pip
+   ```
+
+3. Затем снова установите зависимости:
+   ```bash
+   pip3 install -r requirements.txt
+   ```
+
+**Подробная инструкция:** См. [INSTALL_DEPS.md](INSTALL_DEPS.md)
+
+#### Проблема: Ошибка "BOT_TOKEN не установлен"
+
 #### Проблема: Ошибка "BOT_TOKEN не установлен"
 
 **Симптомы:**
@@ -59,16 +90,39 @@ ImportError: cannot import name 'Bot' from 'aiogram'
 
 **Решение:**
 1. Проверьте, установлены ли все зависимости:
+   
+   **На Ubuntu/Linux:**
    ```bash
+   pip3 install -r requirements.txt
+   ```
+   
+   **Или если pip3 не найден:**
+   ```bash
+   python3 -m pip install -r requirements.txt
+   ```
+   
+   **С правами root (если требуется):**
+   ```bash
+   sudo pip3 install -r requirements.txt
+   ```
+
+2. Если используете виртуальное окружение, убедитесь, что оно активировано:
+   ```bash
+   source venv/bin/activate
    pip install -r requirements.txt
    ```
-2. Если используете виртуальное окружение, убедитесь, что оно активировано
+
 3. Проверьте версию Python (требуется Python 3.8+):
    ```bash
    python3 --version
    ```
    
    **Примечание:** На Ubuntu используйте `python3` вместо `python`.
+
+4. После установки зависимостей проверьте, что они установлены:
+   ```bash
+   python3 -c "import aiogram; import dotenv; print('Все зависимости установлены')"
+   ```
 
 ### 2. Бот запускается, но не отвечает на сообщения
 

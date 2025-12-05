@@ -18,6 +18,18 @@
 ## Установка
 
 1. Установите зависимости:
+
+**На Ubuntu/Linux:**
+```bash
+pip3 install -r requirements.txt
+```
+
+**Или если pip3 не установлен:**
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+**На Windows:**
 ```bash
 pip install -r requirements.txt
 ```
@@ -43,6 +55,7 @@ python3 bot.py
 **Примечание:** 
 - Если бот не работает, см. [TROUBLESHOOTING.md](TROUBLESHOOTING.md) для диагностики проблем.
 - На Ubuntu используйте `python3` вместо `python`. См. [QUICK_FIX.md](QUICK_FIX.md) для быстрого решения.
+- Если видите ошибку `ModuleNotFoundError`, установите зависимости: `pip3 install -r requirements.txt`. См. [INSTALL_DEPS.md](INSTALL_DEPS.md) для подробной инструкции.
 
 ## Устранение неполадок
 

@@ -65,10 +65,35 @@ tail -f bot.log
 sudo journalctl -u telegram-order-bot.service -f
 ```
 
+## Ошибка "ModuleNotFoundError" - зависимости не установлены
+
+Если вы видите ошибки:
+```
+ModuleNotFoundError: No module named 'dotenv'
+ModuleNotFoundError: No module named 'aiogram'
+```
+
+### Быстрое решение:
+
+**На сервере Ubuntu:**
+```bash
+cd ~/telegram-order-bot
+pip3 install -r requirements.txt
+```
+
+Если `pip3` не найден, установите его:
+```bash
+sudo apt-get update
+sudo apt-get install python3-pip
+```
+
+Подробная инструкция по установке зависимостей: [INSTALL_DEPS.md](INSTALL_DEPS.md)
+
 ## Частые проблемы
 
 1. **"BOT_TOKEN не установлен"** - Проверьте файл `.env`
-2. **"ModuleNotFoundError"** - Установите зависимости: `pip3 install -r requirements.txt`
+2. **"ModuleNotFoundError"** - Установите зависимости (см. выше)
 3. **"python not found"** - Используйте `python3` вместо `python`
+4. **"pip not found"** - Используйте `pip3` или `python3 -m pip`
 
 Подробнее см. [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
