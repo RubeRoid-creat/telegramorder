@@ -1,0 +1,17 @@
+[Unit]
+Description=Telegram Order Bot
+After=network.target
+
+[Service]
+Type=simple
+User=telegram-bot
+WorkingDirectory=/opt/telegram-order-bot
+Environment="PATH=/opt/telegram-order-bot/venv/bin"
+ExecStart=/opt/telegram-order-bot/venv/bin/python /opt/telegram-order-bot/bot.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

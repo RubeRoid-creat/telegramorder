@@ -46,3 +46,38 @@ python bot.py
 - При создании отчета со статусом "Завершен" заявка автоматически перемещается из списка активных заявок в отдельный список завершенных заявок.
 - При удалении заявки также удаляются все связанные с ней отчеты. Удаление требует подтверждения.
 
+## Развертывание на сервере Ubuntu
+
+Для развертывания бота на сервере Ubuntu с автозапуском через systemd см. подробную инструкцию в файле [DEPLOY.md](DEPLOY.md).
+
+### Краткая инструкция:
+
+1. Клонируйте репозиторий на сервер:
+```bash
+cd /opt
+sudo git clone https://github.com/RubeRoid-creat/telegramorder.git telegram-order-bot
+cd telegram-order-bot
+```
+
+2. Запустите скрипт развертывания:
+```bash
+sudo chmod +x deploy.sh
+sudo ./deploy.sh
+```
+
+3. Настройте `.env` файл:
+```bash
+sudo nano /opt/telegram-order-bot/.env
+```
+
+4. Запустите и включите автозапуск:
+```bash
+sudo systemctl start telegram-order-bot.service
+sudo systemctl enable telegram-order-bot.service
+```
+
+5. Проверьте статус:
+```bash
+sudo systemctl status telegram-order-bot.service
+```
+
