@@ -19,20 +19,28 @@
 
 1. Установите зависимости:
 
-**На Ubuntu/Linux:**
-```bash
-pip3 install -r requirements.txt
-```
+**⚠️ На Ubuntu 23.04+ ОБЯЗАТЕЛЬНО используйте виртуальное окружение!**
 
-**Или если pip3 не установлен:**
+**Рекомендуемый способ (Ubuntu/Linux):**
 ```bash
-python3 -m pip install -r requirements.txt
+# Создайте виртуальное окружение
+python3 -m venv venv
+
+# Активируйте его
+source venv/bin/activate
+
+# Установите зависимости
+pip install -r requirements.txt
 ```
 
 **На Windows:**
 ```bash
+python -m venv venv
+venv\Scripts\activate
 pip install -r requirements.txt
 ```
+
+**Примечание:** Если вы видите ошибку "externally-managed-environment", вы ДОЛЖНЫ использовать виртуальное окружение. См. [INSTALL_DEPS.md](INSTALL_DEPS.md) для подробной инструкции.
 
 2. Создайте файл `.env` на основе `.env.example` и укажите токен бота:
 ```
@@ -41,11 +49,29 @@ DATABASE_PATH=orders.db
 ```
 
 3. (Опционально) Проверьте конфигурацию перед запуском:
+
+**Если используете виртуальное окружение:**
+```bash
+source venv/bin/activate  # на Linux/Mac
+# или
+venv\Scripts\activate     # на Windows
+python check_config.py
+```
+
+**Если зависимости установлены глобально:**
 ```bash
 python3 check_config.py
 ```
 
 4. Запустите бота:
+
+**Если используете виртуальное окружение:**
+```bash
+source venv/bin/activate  # на Linux/Mac (не забудьте активировать!)
+python bot.py
+```
+
+**Если зависимости установлены глобально:**
 ```bash
 python3 bot.py
 ```
@@ -53,9 +79,10 @@ python3 bot.py
 **Примечание:** На Linux (Ubuntu) используйте `python3` вместо `python`. Если команда `python` не найдена, используйте `python3`.
 
 **Примечание:** 
+- Если видите ошибку `externally-managed-environment`, используйте виртуальное окружение! См. [VENV_SETUP.md](VENV_SETUP.md) для быстрой настройки.
 - Если бот не работает, см. [TROUBLESHOOTING.md](TROUBLESHOOTING.md) для диагностики проблем.
 - На Ubuntu используйте `python3` вместо `python`. См. [QUICK_FIX.md](QUICK_FIX.md) для быстрого решения.
-- Если видите ошибку `ModuleNotFoundError`, установите зависимости: `pip3 install -r requirements.txt`. См. [INSTALL_DEPS.md](INSTALL_DEPS.md) для подробной инструкции.
+- Если видите ошибку `ModuleNotFoundError`, установите зависимости в виртуальное окружение. См. [INSTALL_DEPS.md](INSTALL_DEPS.md) для подробной инструкции.
 
 ## Устранение неполадок
 

@@ -1,5 +1,18 @@
 # Быстрое решение проблем
 
+## ⚠️ Ошибка "externally-managed-environment" (самая частая проблема!)
+
+Если при установке зависимостей вы видите эту ошибку, **используйте виртуальное окружение:**
+
+```bash
+cd ~/telegram-order-bot
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Подробная инструкция:** [VENV_SETUP.md](VENV_SETUP.md)
+
 ## Ошибка "Command 'python' not found" на Ubuntu
 
 Если при запуске бота вы видите ошибку:
@@ -37,6 +50,13 @@ sudo apt-get install python-is-python3
 
 ## Проверка конфигурации перед запуском
 
+**Если используете виртуальное окружение:**
+```bash
+source venv/bin/activate
+python check_config.py
+```
+
+**Если зависимости установлены глобально:**
 ```bash
 python3 check_config.py
 ```
@@ -49,6 +69,13 @@ python3 check_config.py
 
 ## Запуск бота
 
+**Если используете виртуальное окружение:**
+```bash
+source venv/bin/activate
+python bot.py
+```
+
+**Если зависимости установлены глобально:**
 ```bash
 python3 bot.py
 ```
@@ -65,6 +92,39 @@ tail -f bot.log
 sudo journalctl -u telegram-order-bot.service -f
 ```
 
+## Ошибка "externally-managed-environment" при установке зависимостей
+
+Если вы видите ошибку:
+```
+error: externally-managed-environment
+This environment is externally managed...
+```
+
+### ⚠️ Решение: Используйте виртуальное окружение (ОБЯЗАТЕЛЬНО)
+
+**Это единственный правильный способ на современных Ubuntu!**
+
+```bash
+cd ~/telegram-order-bot
+
+# Создайте виртуальное окружение
+python3 -m venv venv
+
+# Активируйте его
+source venv/bin/activate
+
+# Теперь установите зависимости (обратите внимание - используем просто pip)
+pip install -r requirements.txt
+
+# Проверьте конфигурацию
+python check_config.py
+
+# Запустите бота
+python bot.py
+```
+
+**Важно:** После активации виртуального окружения в начале строки появится `(venv)`.
+
 ## Ошибка "ModuleNotFoundError" - зависимости не установлены
 
 Если вы видите ошибки:
@@ -75,16 +135,12 @@ ModuleNotFoundError: No module named 'aiogram'
 
 ### Быстрое решение:
 
-**На сервере Ubuntu:**
+**Создайте и используйте виртуальное окружение:**
 ```bash
 cd ~/telegram-order-bot
-pip3 install -r requirements.txt
-```
-
-Если `pip3` не найден, установите его:
-```bash
-sudo apt-get update
-sudo apt-get install python3-pip
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
 Подробная инструкция по установке зависимостей: [INSTALL_DEPS.md](INSTALL_DEPS.md)

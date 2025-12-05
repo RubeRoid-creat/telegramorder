@@ -33,6 +33,39 @@ sudo apt-get install python-is-python3
 
 ### 2. Бот не запускается
 
+#### Проблема: Ошибка "externally-managed-environment"
+
+**Симптомы:**
+```
+error: externally-managed-environment
+This environment is externally managed.
+```
+
+**Причина:**
+Современные версии Ubuntu (23.04+) блокируют установку пакетов системно через pip для защиты системы.
+
+**Решение (ОБЯЗАТЕЛЬНО использовать виртуальное окружение):**
+
+```bash
+cd ~/telegram-order-bot
+
+# Создайте виртуальное окружение
+python3 -m venv venv
+
+# Активируйте его
+source venv/bin/activate
+
+# Установите зависимости
+pip install -r requirements.txt
+
+# После этого запускайте бота через виртуальное окружение
+python bot.py
+```
+
+**Важно:** Не используйте `--break-system-packages`, это может сломать систему!
+
+**Подробная инструкция:** См. [INSTALL_DEPS.md](INSTALL_DEPS.md)
+
 #### Проблема: ModuleNotFoundError - зависимости не установлены
 
 **Симптомы:**
@@ -41,28 +74,23 @@ ModuleNotFoundError: No module named 'dotenv'
 ModuleNotFoundError: No module named 'aiogram'
 ```
 
-**Быстрое решение:**
+**Решение:**
 
-1. Установите зависимости:
+1. **Создайте виртуальное окружение и установите зависимости:**
    ```bash
    cd ~/telegram-order-bot
-   pip3 install -r requirements.txt
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
    ```
 
-2. Если `pip3` не найден, установите pip:
+2. **После установки активируйте виртуальное окружение перед запуском:**
    ```bash
-   sudo apt-get update
-   sudo apt-get install python3-pip
-   ```
-
-3. Затем снова установите зависимости:
-   ```bash
-   pip3 install -r requirements.txt
+   source venv/bin/activate
+   python bot.py
    ```
 
 **Подробная инструкция:** См. [INSTALL_DEPS.md](INSTALL_DEPS.md)
-
-#### Проблема: Ошибка "BOT_TOKEN не установлен"
 
 #### Проблема: Ошибка "BOT_TOKEN не установлен"
 
