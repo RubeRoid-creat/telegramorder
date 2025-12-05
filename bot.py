@@ -1,13 +1,27 @@
 import asyncio
 import os
+import logging
+import sys
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.exceptions import TelegramAPIError
 from dotenv import load_dotenv
 from database import Database, OrderStatus
+
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('bot.log', encoding='utf-8')
+    ]
+)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -15,6 +29,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 DATABASE_PATH = os.getenv("DATABASE_PATH", "orders.db")
 
 if not BOT_TOKEN:
+    logger.error("BOT_TOKEN не установлен в .env файле")
     raise ValueError("BOT_TOKEN не установлен в .env файле")
 
 bot = Bot(token=BOT_TOKEN)
@@ -138,36 +153,52 @@ async def process_equipment(message: Message, state: FSMContext):
 @dp.message(OrderStates.waiting_problem)
 async def process_problem(message: Message, state: FSMContext):
     """Обработка проблемы и сохранение заявки"""
-    data = await state.get_data()
-    data["problem"] = message.text
-    
-    order_id = await db.create_order(
-        user_id=message.from_user.id,
-        address=data["address"],
-        time=data["time"],
-        equipment_type=data["equipment_type"],
-        problem=data["problem"]
-    )
-    
-    await state.clear()
-    await message.answer(
-        f"✅ Заявка #{order_id} успешно создана!\n\n"
-        f"Адрес: {data['address']}\n"
-        f"Время: {data['time']}\n"
-        f"Тип техники: {data['equipment_type']}\n"
-        f"Проблема: {data['problem']}",
-        reply_markup=get_main_keyboard()
-    )
+    try:
+        data = await state.get_data()
+        data["problem"] = message.text
+        
+        order_id = await db.create_order(
+            user_id=message.from_user.id,
+            address=data["address"],
+            time=data["time"],
+            equipment_type=data["equipment_type"],
+            problem=data["problem"]
+        )
+        
+        await state.clear()
+        await message.answer(
+            f"✅ Заявка #{order_id} успешно создана!\n\n"
+            f"Адрес: {data['address']}\n"
+            f"Время: {data['time']}\n"
+            f"Тип техники: {data['equipment_type']}\n"
+            f"Проблема: {data['problem']}",
+            reply_markup=get_main_keyboard()
+        )
+    except Exception as e:
+        logger.exception(f"Ошибка при создании заявки: {e}")
+        await state.clear()
+        await message.answer(
+            "❌ Произошла ошибка при создании заявки. Попробуйте еще раз.",
+            reply_markup=get_main_keyboard()
+        )
 
 
 @dp.message(F.text == "📋 Мои заявки")
 @dp.message(Command("my_orders"))
 async def cmd_my_orders(message: Message):
     """Просмотр активных заявок пользователя (исключая завершенные)"""
-    orders = await db.get_user_orders(message.from_user.id, exclude_completed=True)
-    
-    if not orders:
-        await message.answer("У вас нет активных заявок.", reply_markup=get_main_keyboard())
+    try:
+        orders = await db.get_user_orders(message.from_user.id, exclude_completed=True)
+        
+        if not orders:
+            await message.answer("У вас нет активных заявок.", reply_markup=get_main_keyboard())
+            return
+    except Exception as e:
+        logger.exception(f"Ошибка при получении заявок: {e}")
+        await message.answer(
+            "❌ Произошла ошибка при получении заявок. Попробуйте позже.",
+            reply_markup=get_main_keyboard()
+        )
         return
     
     text = "📋 Ваши активные заявки:\n\n"
@@ -211,10 +242,18 @@ async def cmd_my_orders(message: Message):
 @dp.message(Command("completed_orders"))
 async def cmd_completed_orders(message: Message):
     """Просмотр завершенных заявок пользователя"""
-    orders = await db.get_completed_orders(message.from_user.id)
-    
-    if not orders:
-        await message.answer("У вас нет завершенных заявок.", reply_markup=get_main_keyboard())
+    try:
+        orders = await db.get_completed_orders(message.from_user.id)
+        
+        if not orders:
+            await message.answer("У вас нет завершенных заявок.", reply_markup=get_main_keyboard())
+            return
+    except Exception as e:
+        logger.exception(f"Ошибка при получении завершенных заявок: {e}")
+        await message.answer(
+            "❌ Произошла ошибка при получении заявок. Попробуйте позже.",
+            reply_markup=get_main_keyboard()
+        )
         return
     
     text = "✅ Завершенные заявки:\n\n"
@@ -273,6 +312,13 @@ async def process_order_id(message: Message, state: FSMContext):
         )
     except ValueError:
         await message.answer("❌ Введите корректный номер заявки (число).")
+    except Exception as e:
+        logger.exception(f"Ошибка при обработке номера заявки: {e}")
+        await state.clear()
+        await message.answer(
+            "❌ Произошла ошибка. Попробуйте еще раз.",
+            reply_markup=get_main_keyboard()
+        )
 
 
 @dp.message(ReportStates.waiting_status)
@@ -365,6 +411,13 @@ async def process_cost_price(message: Message, state: FSMContext):
         )
     except ValueError:
         await message.answer("❌ Введите корректное число.")
+    except Exception as e:
+        logger.exception(f"Ошибка при создании отчета: {e}")
+        await state.clear()
+        await message.answer(
+            "❌ Произошла ошибка при создании отчета. Попробуйте еще раз.",
+            reply_markup=get_main_keyboard()
+        )
 
 
 @dp.message(ReportStates.waiting_agreed_amount)
@@ -398,28 +451,36 @@ async def process_completion_time(message: Message, state: FSMContext):
 @dp.message(ReportStates.waiting_what_to_do)
 async def process_what_to_do(message: Message, state: FSMContext):
     """Обработка описания работ и сохранение отчета для длительного ремонта"""
-    data = await state.get_data()
-    data["what_to_do"] = message.text
-    
-    await db.create_report(
-        order_id=data["order_id"],
-        status=data["status"],
-        agreed_amount=data.get("agreed_amount"),
-        completion_date=data.get("completion_date"),
-        completion_time=data.get("completion_time"),
-        what_to_do=data.get("what_to_do")
-    )
-    
-    await state.clear()
-    await message.answer(
-        f"✅ Отчет создан для заявки #{data['order_id']}\n"
-        f"Статус: ⏳ Длительный ремонт\n\n"
-        f"Сумма согласования: {data.get('agreed_amount', 0)} руб.\n"
-        f"Дата завершения: {data.get('completion_date')}\n"
-        f"Время завершения: {data.get('completion_time')}\n"
-        f"Что нужно сделать: {data.get('what_to_do')}",
-        reply_markup=get_main_keyboard()
-    )
+    try:
+        data = await state.get_data()
+        data["what_to_do"] = message.text
+        
+        await db.create_report(
+            order_id=data["order_id"],
+            status=data["status"],
+            agreed_amount=data.get("agreed_amount"),
+            completion_date=data.get("completion_date"),
+            completion_time=data.get("completion_time"),
+            what_to_do=data.get("what_to_do")
+        )
+        
+        await state.clear()
+        await message.answer(
+            f"✅ Отчет создан для заявки #{data['order_id']}\n"
+            f"Статус: ⏳ Длительный ремонт\n\n"
+            f"Сумма согласования: {data.get('agreed_amount', 0)} руб.\n"
+            f"Дата завершения: {data.get('completion_date')}\n"
+            f"Время завершения: {data.get('completion_time')}\n"
+            f"Что нужно сделать: {data.get('what_to_do')}",
+            reply_markup=get_main_keyboard()
+        )
+    except Exception as e:
+        logger.exception(f"Ошибка при создании отчета: {e}")
+        await state.clear()
+        await message.answer(
+            "❌ Произошла ошибка при создании отчета. Попробуйте еще раз.",
+            reply_markup=get_main_keyboard()
+        )
 
 
 @dp.message(F.text == "🗑️ Удалить заявку")
@@ -511,13 +572,66 @@ async def process_delete_confirmation(message: Message, state: FSMContext):
         )
 
 
+@dp.message()
+async def handle_unknown_message(message: Message, state: FSMContext):
+    """Обработчик неизвестных сообщений"""
+    # Проверяем, что это текстовое сообщение
+    if not message.text:
+        return
+    
+    current_state = await state.get_state()
+    
+    # Если пользователь в процессе создания заявки или отчета, не отвечаем
+    # Пусть сработают соответствующие обработчики состояний
+    if current_state:
+        return
+    
+    # Для остальных неизвестных сообщений
+    await message.answer(
+        "🤔 Я не понимаю эту команду.\n\n"
+        "Используйте кнопки меню или команду /start для начала работы.",
+        reply_markup=get_main_keyboard()
+    )
+
+
 async def main():
     """Главная функция"""
-    await db.init_db()
-    print("Бот запущен...")
-    await dp.start_polling(bot)
+    try:
+        logger.info("Инициализация базы данных...")
+        await db.init_db()
+        logger.info("База данных инициализирована")
+        
+        logger.info("Запуск бота...")
+        print("Бот запущен...")
+        
+        # Получаем информацию о боте для проверки
+        bot_info = await bot.get_me()
+        logger.info(f"Бот запущен: @{bot_info.username} ({bot_info.first_name})")
+        
+        # Запускаем polling с обработкой ошибок
+        await dp.start_polling(bot, skip_updates=True)
+        
+    except TelegramAPIError as e:
+        logger.error(f"Ошибка Telegram API: {e}")
+        print(f"❌ Ошибка подключения к Telegram: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logger.exception(f"Критическая ошибка: {e}")
+        print(f"❌ Критическая ошибка: {e}")
+        sys.exit(1)
+    finally:
+        logger.info("Закрытие соединения с ботом...")
+        await bot.session.close()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Получен сигнал остановки")
+        print("\n⏹ Бот остановлен")
+    except Exception as e:
+        logger.exception(f"Ошибка при запуске: {e}")
+        print(f"❌ Ошибка при запуске: {e}")
+        sys.exit(1)
 
