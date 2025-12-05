@@ -30,15 +30,19 @@ DATABASE_PATH=orders.db
 
 3. (Опционально) Проверьте конфигурацию перед запуском:
 ```bash
-python check_config.py
+python3 check_config.py
 ```
 
 4. Запустите бота:
 ```bash
-python bot.py
+python3 bot.py
 ```
 
-**Примечание:** Если бот не работает, см. [TROUBLESHOOTING.md](TROUBLESHOOTING.md) для диагностики проблем.
+**Примечание:** На Linux (Ubuntu) используйте `python3` вместо `python`. Если команда `python` не найдена, используйте `python3`.
+
+**Примечание:** 
+- Если бот не работает, см. [TROUBLESHOOTING.md](TROUBLESHOOTING.md) для диагностики проблем.
+- На Ubuntu используйте `python3` вместо `python`. См. [QUICK_FIX.md](QUICK_FIX.md) для быстрого решения.
 
 ## Устранение неполадок
 
@@ -48,8 +52,10 @@ python bot.py
 
 1. Проверьте конфигурацию:
    ```bash
-   python check_config.py
+   python3 check_config.py
    ```
+   
+   **Примечание:** Если получаете ошибку "Command 'python' not found", используйте `python3` вместо `python`.
 
 2. Проверьте логи:
    - Локально: файл `bot.log` в директории проекта

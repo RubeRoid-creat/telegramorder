@@ -2,7 +2,36 @@
 
 ## Типичные проблемы и их решения
 
-### 1. Бот не запускается
+### 1. Ошибка "Command 'python' not found" (Ubuntu/Linux)
+
+#### Проблема: Команда python не найдена
+
+**Симптомы:**
+```
+Command 'python' not found, did you mean:
+  command 'python3' from deb python3
+  command 'python' from deb python-is-python3
+```
+
+**Решение:**
+
+**Вариант 1 (рекомендуется):** Используйте `python3` вместо `python`
+```bash
+python3 check_config.py
+python3 bot.py
+```
+
+**Вариант 2:** Установите пакет для создания символической ссылки:
+```bash
+sudo apt-get update
+sudo apt-get install python-is-python3
+```
+
+После этого команда `python` будет работать как `python3`.
+
+**Примечание:** В документации и скриптах на Ubuntu всегда используется `python3`.
+
+### 2. Бот не запускается
 
 #### Проблема: Ошибка "BOT_TOKEN не установлен"
 
@@ -36,8 +65,10 @@ ImportError: cannot import name 'Bot' from 'aiogram'
 2. Если используете виртуальное окружение, убедитесь, что оно активировано
 3. Проверьте версию Python (требуется Python 3.8+):
    ```bash
-   python --version
+   python3 --version
    ```
+   
+   **Примечание:** На Ubuntu используйте `python3` вместо `python`.
 
 ### 2. Бот запускается, но не отвечает на сообщения
 
